@@ -6,18 +6,28 @@ import urllib2
 import base64
 import re
 import os.path
-import pprint
 from bs4 import BeautifulSoup, NavigableString
 
 USERNAME = "YOUR_USERNAME"
 PASSWORD = "YOUR_PASSWORD"
 
-def startAndWaitForAria(url):
-	print "Downloading: {0}".format(url)
+def startAndWaitForAria(chdir, url):
+	if os.path.exists(chdir) is not True:
+		print "Path {0} does not exist, attempting to create".format(chdir)
+		try:
+			os.makedirs(chdir)
+		except:
+			print "Failed to make directory, exiting"
+			return
+
+	os.chdir(chdir)
+
+	print "Downloading: {0} to {1}".format(url, chdir)
+
 	p = subprocess.Popen(['/usr/bin/aria2c', '-s16', '-x16', '-k1M', '--check-certificate=false', '--http-user={0}'.format(USERNAME), '--http-passwd={0}'.format(PASSWORD), url])
 	p.wait()
 
-def findFilesWithPattern(baseurl, pattern):
+def findFilesWithPattern(cwd, baseurl, pattern):
 	downloadList = []
 
 	html = downloadAuthFile(baseurl)
@@ -35,7 +45,6 @@ def findFilesWithPattern(baseurl, pattern):
 
 	if len(table):
 		for tr in table[0].find_all('tr'):
-			print tr
 
 			if len(tr.contents) < 4:
 				print "Incompatible HTTP list type"
@@ -58,22 +67,24 @@ def findFilesWithPattern(baseurl, pattern):
 				print "Parse error #2"
 				continue
 
-			print dltype.text
-			print dlurl['href']
-
-			if dltype.text.startswith('Directory'):
-				continue
-
-				#I will soon add support for downloading subfolders
+			if dltype.text.startswith('Directory') and dlurl['href'].startswith('.') is not True:
+				newcwd = cwd + urllib2.unquote(dlurl['href'])
+				print "Directory: " + newcwd
+				downloadList = downloadList + findFilesWithPattern(newcwd, "{0}{1}".format(baseurl, dlurl['href']), pattern)
 			else:
 				filename = dlurl.contents[0]
 				href = dlurl['href']
 
 				if pattern is not None:
 					if pattern.find_all(filename):
-						downloadList.append("{0}{1}".format(baseurl, href))
+						p = [cwd, "{0}{1}".format(baseurl, href)]
+
+						downloadList.append(p)
 				else:
-					downloadList.append("{0}{1}".format(baseurl, href))
+					if href.startswith('.') is not True:
+						p = [cwd, "{0}{1}".format(baseurl, href)]
+
+						downloadList.append(p)
 
 	return downloadList
 
@@ -83,21 +94,21 @@ def getBasicAuthString():
 def downloadFileList(downloads):
 	if len(downloads) > 0:
 		for f in downloads:
-			startAndWaitForAria(f)
+			startAndWaitForAria(f[0], f[1])
 	else:
 		print "No files found in directory!"
 
 def singleFileDownload(url):
 	if url.endswith('/'):
-		downloadFileList(findFilesWithPattern(url, None))
+		downloadFileList(findFilesWithPattern(os.getcwd() + '/', url, None))
 	else:
-		startAndWaitForAria(url)
+		startAndWaitForAria(os.getcwd() + '/', url)
 
 def multiRegexDownload(url, reg):
 	if url.endswith('/') is not True:
 		print "This mode only supports directories!"
 	else:
-		downloadFileList(findFilesWithPattern(url, re.compile(reg)))
+		downloadFileList(findFilesWithPattern(os.getcwd() + '/', url, re.compile(reg)))
 
 def downloadAuthFile(url):
 	request = urllib2.Request(url)
