@@ -45,9 +45,6 @@ def findFilesWithPattern(baseurl, pattern):
 			dlname = tr.contents[0]
 			dltype = tr.contents[3]
 
-			#print vars(dlname)
-			#print vars(dltype)
-
 			if dlname is None or dltype is None:
 				print "Parse error #1"
 				continue
@@ -55,7 +52,6 @@ def findFilesWithPattern(baseurl, pattern):
 			if type(dlname.next_element) is NavigableString:
 				continue
 
-			#FIX
 			dlurl = dlname.next_element
 
 			if dlurl is None:
@@ -64,7 +60,6 @@ def findFilesWithPattern(baseurl, pattern):
 
 			print dltype.text
 			print dlurl['href']
-			#sys.exit(0)
 
 			if dltype.text.startswith('Directory'):
 				continue
