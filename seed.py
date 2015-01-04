@@ -30,17 +30,15 @@ def startAndWaitForAria(chdir, url):
 def findFilesWithPattern(cwd, baseurl, pattern):
 	downloadList = []
 
-	html = downloadAuthFile(baseurl)
-
-	if html is None:
-		return downloadList
-
 	data = downloadAuthFile(baseurl)
 
 	if data is None:
 		return downloadList
 
+	data = data.read()
+
 	soup = BeautifulSoup(data)
+	
 	table = soup.select('table')
 
 	if len(table):
@@ -114,18 +112,14 @@ def downloadAuthFile(url):
 	request = urllib2.Request(url)
 	request.add_header("Authorization", "Basic %s" % getBasicAuthString())
 
-	data = None
-
 	try:
-		data = urllib2.urlopen(request)
+		return urllib2.urlopen(request)
 	except urllib2.URLError, e:
 		print "URL Error ({0}): {1}".format(e.errno, e.strerror)
 	except urllib2.HTTPError, e:
 	    print "HTTP Error ({0}): {1}".format(e.errno, e.strerror)
 	except:
 		print "Unknown Exception: ", sys.exc_info()[0]
-	finally:
-		return data.read()
 
 	return None
 
