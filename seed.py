@@ -65,7 +65,11 @@ def findFilesWithPattern(cwd, baseurl, pattern):
 				print "Parse error #2"
 				continue
 
-			if dltype.text.startswith('Directory') and dlurl['href'].startswith('.') is not True:
+			# I added pattern check because if we're pattern matching we probably only want things from one directory
+			# Recursion here could end up causing weird problems, especially if we're using it to download files from a root folder for example
+			# It would traverse all the directories and end up downloading every file on the entire box that matched. Not good.
+			# I will probably add a -r switch or something for this specific purpose
+			if dltype.text.startswith('Directory') and dlurl['href'].startswith('.') is not True and pattern is None:
 				newcwd = cwd + urllib2.unquote(dlurl['href'])
 				print "Directory: " + newcwd
 				downloadList = downloadList + findFilesWithPattern(newcwd, "{0}{1}".format(baseurl, dlurl['href']), pattern)
@@ -74,7 +78,7 @@ def findFilesWithPattern(cwd, baseurl, pattern):
 				href = dlurl['href']
 
 				if pattern is not None:
-					if pattern.find_all(filename):
+					if pattern.findall(filename):
 						p = [cwd, "{0}{1}".format(baseurl, href)]
 
 						downloadList.append(p)
